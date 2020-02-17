@@ -1,12 +1,53 @@
-node {
+pipeline {
+    agent any
 
-    checkout scm
+    stages {
+        stage ('Clone') {
+            steps {
+                git branch: 'master', url: "https://github.com/sagarpatr/TestDocker.git"
+            }
+        }
 
-    docker.withRegistry('https://registry.hub.docker.com', 'dockerHub') {
+        stage ('Artifactory configuration') {
+            steps {
+                rtServer (
+                    id: "ARTIFACTORY_SERVER",
+                    url: "https://one.jfrog.io",
+                    credentialsId: 	myjfrog
+                )
+            }
+        }
 
-        def customImage = docker.build("miltonc/dockerwebapp")
+        stage ('Build docker image') {
+            steps {
+                script {
+                    docker.build(ARTIFACTORY_DOCKER_REGISTRY + '/hello-world:latest', 'jenkins-examples/pipeline-examples/resources')
+                }
+            }
+        }
 
-        /* Push the container to the custom Registry */
-        customImage.push()
+        stage ('Push image to Artifactory') {
+            steps {
+                rtDockerPush(
+                    serverId: "ARTIFACTORY_SERVER",
+                    image: ARTIFACTORY_DOCKER_REGISTRY + '/hello-world:latest',
+                    // Host:
+                    // On OSX: "tcp://127.0.0.1:1234"
+                    // On Linux can be omitted or null
+                    host: HOST_NAME,
+                    targetRepo: 'docker-local',
+                    // Attach custom properties to the published artifacts:
+                    properties: 'project-name=docker1;status=stable'
+                )
+            }
+        }
+
+        stage ('Publish build info') {
+            steps {
+                rtPublishBuildInfo (
+                    serverId: "ARTIFACTORY_SERVER"
+                )
+            }
+        }
     }
 }
