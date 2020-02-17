@@ -4,7 +4,7 @@ pipeline {
     stages {
         stage ('Clone') {
             steps {
-                git branch: 'master', credentialsId: 'personal-git', url: "https://github.com/sagarpatr/TestDocker.git"
+                git branch: 'master', url: "https://github.com/sagarpatr/TestDocker.git"
             }
         }
 
